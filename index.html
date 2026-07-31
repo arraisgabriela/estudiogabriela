@@ -144,7 +144,10 @@ header.open .nav nav{clip-path:inset(0 0 0 0)}
 footer{margin-top:70px;padding:44px 20px 34px}
 footer img{height:86px}
 }
-@media (max-width:430px){.gal{grid-template-columns:1fr;max-width:300px;margin:0 auto}.wrap{padding:0 32px}}
+@media (max-width:430px){.wrap{padding:0 32px}}
+/* 1 coluna só em telas bem estreitas (iPhone SE e afins). Acima disso — inclusive
+   nos iPhones de 390px — a galeria fica em 2 colunas. */
+@media (max-width:359px){.gal{grid-template-columns:1fr;max-width:300px;margin:0 auto}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important;transition-duration:.01s!important}#heroLogo .bloomp{scale:1;rotate:0deg}#heroLogo .fadep{opacity:1}}
 </style>
 </head>
