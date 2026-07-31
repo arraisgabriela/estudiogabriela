@@ -266,7 +266,27 @@ footer img{height:86px}
   document.body.appendChild(svg);
   if(needleD){ const np=document.createElementNS(NS,'path'); np.setAttribute('d',needleD); np.setAttribute('fill','#9D8EC3'); document.getElementById('sNG').appendChild(np); }
   const pOver=document.getElementById('pOver'), pUnder=document.getElementById('pUnder'), pMask=document.getElementById('pMask'), gN=document.getElementById('sNeedle');
-  let total=0,lastW=0,lastH=0;
+  let total=0,lastW=0,lastH=0,estreito=false,mapaY=null;
+  /* No mobile o traçado é quase vertical: seu comprimento é MENOR que o scroll da
+     página, então mapear "comprimento = total * fração do scroll" fazia a agulha
+     avançar mais devagar que o dedo e sair da tela pelo topo no fim. Em vez disso
+     amostramos o y do traçado e ancoramos a agulha a um ponto fixo da viewport. */
+  function amostrarY(){
+    const N=160, a=new Float64Array(N+1);
+    let max=-Infinity;
+    for(let i=0;i<=N;i++){ const y=pOver.getPointAtLength(total*i/N).y; max=Math.max(max,y); a[i]=max; }
+    mapaY=a;
+  }
+  function lenNoY(y){
+    if(!mapaY) return 0;
+    const N=mapaY.length-1;
+    if(y<=mapaY[0]) return 0;
+    if(y>=mapaY[N]) return total;
+    let lo=0,hi=N;
+    while(hi-lo>1){ const m=(lo+hi)>>1; if(mapaY[m]<y) lo=m; else hi=m; }
+    const y0=mapaY[lo],y1=mapaY[hi],t=y1>y0?(y-y0)/(y1-y0):0;
+    return total*(lo+t)/N;
+  }
   function crPath(P){ let d='M'+P[0].x.toFixed(1)+','+P[0].y.toFixed(1); for(let i2=0;i2<P.length-1;i2++){ const p0=P[Math.max(0,i2-1)],p1=P[i2],p2=P[i2+1],p3=P[Math.min(P.length-1,i2+2)]; d+='C'+(p1.x+(p2.x-p0.x)/6).toFixed(1)+','+(p1.y+(p2.y-p0.y)/6).toFixed(1)+' '+(p2.x-(p3.x-p1.x)/6).toFixed(1)+','+(p2.y-(p3.y-p1.y)/6).toFixed(1)+' '+p2.x.toFixed(1)+','+p2.y.toFixed(1); } return d; }
   function build(){
     const vw=document.documentElement.clientWidth, docH=document.body.scrollHeight;
@@ -336,6 +356,8 @@ footer img{height:86px}
     pUnder.setAttribute('stroke-dasharray',narrow?'40 90':'55 115');
     pUnder.setAttribute('stroke-dashoffset',narrow?'-72':'-110');
     total=pOver.getTotalLength();
+    estreito=narrow;
+    if(narrow) amostrarY(); else mapaY=null;
     pMask.style.strokeDasharray=total;
     pMask.style.strokeDashoffset=Math.max(0,total-curLen);
   }
@@ -381,7 +403,9 @@ footer img{height:86px}
   }
   function tick(){
     raf=0;
-    curLen += (tLen-curLen)*0.075;
+    /* no mobile o scroll por toque é rápido e o rAF chega picotado durante o
+       momentum: com 0.075 a agulha ficava visivelmente para trás do dedo. */
+    curLen += (tLen-curLen)*(estreito?0.22:0.075);
     if(Math.abs(tLen-curLen)>0.5){ raf=requestAnimationFrame(tick); } else { curLen=tLen; }
     if(!away&&curLen<2){ pMask.style.strokeDashoffset=total; gN.style.opacity=0; return; }
     if(away&&knotState===0&&tLen>=total-1&&Math.abs(tLen-curLen)<=0.6) startKnot();
@@ -394,7 +418,9 @@ footer img{height:86px}
     away=frac>0.012;
     const ln=document.getElementById('logoNeedle');
     if(ln){ if(away&&!ln.dataset.off){ ln.dataset.off='1'; ln.style.animation='none'; ln.style.transition='opacity .35s'; ln.style.opacity=0; } else if(!away&&ln.dataset.off){ delete ln.dataset.off; ln.style.opacity=1; } }
-    tLen = away ? total*frac : 0;
+    /* mobile: a agulha borda onde o dedo está (40% da altura da tela).
+       desktop: mantém a fração linear, que ali sobra traçado e funciona bem. */
+    tLen = away ? (estreito ? lenNoY(scrollY+vh*0.40) : total*frac) : 0;
     if(knotState&&tLen<total-14){ knotState=0; const wg=document.getElementById('wrapG'); wg.style.transition='none'; wg.style.opacity=0; wg.style.transform=''; document.getElementById('knotDot').style.opacity=0; }
     if(!raf) raf=requestAnimationFrame(tick);
   }
