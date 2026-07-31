@@ -51,7 +51,10 @@ section{scroll-margin-top:90px}
 #heroLogo .bloomp{transform-box:view-box;transform-origin:299px 84px;scale:0;rotate:-18deg;animation:bloom .85s cubic-bezier(.34,1.56,.64,1) forwards}
 @keyframes bloom{to{scale:1;rotate:0deg}}
 @keyframes fadein{to{opacity:1}}
-#stitchSvg{position:absolute;left:0;top:0;width:100%;pointer-events:none;z-index:5;overflow:visible}
+/* z-index negativo: as seções usam `translate` no .reveal, e translate≠none cria
+   contexto de empilhamento próprio — isso prende o z-index:2 das fotos dentro da
+   seção, então ele sozinho não faz a costura passar por baixo delas. */
+#stitchSvg{position:absolute;left:0;top:0;width:100%;pointer-events:none;z-index:-1;overflow:hidden}
 #sNeedle{transition:opacity .3s ease}
 .hero h1{font-size:clamp(34px,5.2vw,58px);line-height:1.12;font-weight:700;margin:18px auto 18px;max-width:16ch;text-wrap:balance}
 .hero h1 .script{color:var(--pink);font-size:1.12em}
@@ -71,6 +74,7 @@ section{scroll-margin-top:90px}
 .sect-head p{color:#5D4568;max-width:54ch;margin:10px auto 0}
 /* gallery */
 .gal{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.hero h1,.hero p,.ctas,#heroLogo,.sect-head,.gal figure,.hoop,.sobre>div,.curso-card,.card,footer{position:relative;z-index:2}
 .gal figure{border-radius:18px;overflow:hidden;background:#EFE3EE;outline:2px dashed transparent;outline-offset:0;transition:.3s}
 .gal img{width:100%;aspect-ratio:1;object-fit:cover;transition:scale .5s ease}
 .gal figure:hover{outline-color:var(--lilac);outline-offset:6px}
@@ -108,7 +112,7 @@ footer small{display:block;margin-top:14px;font-size:13px;color:#8d7d9e}
 .in.reveal,.in .reveal{opacity:1;translate:0 0}
 @media (max-width:900px){.gal{grid-template-columns:repeat(2,1fr)}.sobre{grid-template-columns:1fr;gap:34px}.cards{grid-template-columns:1fr;max-width:420px;margin:0 auto}}
 @media (max-width:760px){
-.wrap{padding:0 36px}
+.wrap{padding:0 22px}
 .nav{height:64px}
 .nav .brand img{height:44px}
 .burger{display:block}
@@ -144,7 +148,7 @@ header.open .nav nav{clip-path:inset(0 0 0 0)}
 footer{margin-top:70px;padding:44px 20px 34px}
 footer img{height:86px}
 }
-@media (max-width:430px){.wrap{padding:0 32px}}
+@media (max-width:430px){.wrap{padding:0 20px}}
 /* 1 coluna só em telas bem estreitas (iPhone SE e afins). Acima disso — inclusive
    nos iPhones de 390px — a galeria fica em 2 colunas. */
 @media (max-width:359px){.gal{grid-template-columns:1fr;max-width:300px;margin:0 auto}}
@@ -266,28 +270,8 @@ footer img{height:86px}
   document.body.appendChild(svg);
   if(needleD){ const np=document.createElementNS(NS,'path'); np.setAttribute('d',needleD); np.setAttribute('fill','#9D8EC3'); document.getElementById('sNG').appendChild(np); }
   const pOver=document.getElementById('pOver'), pUnder=document.getElementById('pUnder'), pMask=document.getElementById('pMask'), gN=document.getElementById('sNeedle');
-  let total=0,lastW=0,lastH=0,estreito=false,mapaY=null;
-  /* No mobile o traçado é quase vertical: seu comprimento é MENOR que o scroll da
-     página, então mapear "comprimento = total * fração do scroll" fazia a agulha
-     avançar mais devagar que o dedo e sair da tela pelo topo no fim. Em vez disso
-     amostramos o y do traçado e ancoramos a agulha a um ponto fixo da viewport. */
-  function amostrarY(){
-    const N=160, a=new Float64Array(N+1);
-    let max=-Infinity;
-    for(let i=0;i<=N;i++){ const y=pOver.getPointAtLength(total*i/N).y; max=Math.max(max,y); a[i]=max; }
-    mapaY=a;
-  }
-  function lenNoY(y){
-    if(!mapaY) return 0;
-    const N=mapaY.length-1;
-    if(y<=mapaY[0]) return 0;
-    if(y>=mapaY[N]) return total;
-    let lo=0,hi=N;
-    while(hi-lo>1){ const m=(lo+hi)>>1; if(mapaY[m]<y) lo=m; else hi=m; }
-    const y0=mapaY[lo],y1=mapaY[hi],t=y1>y0?(y-y0)/(y1-y0):0;
-    return total*(lo+t)/N;
-  }
-  function crPath(P){ let d='M'+P[0].x.toFixed(1)+','+P[0].y.toFixed(1); for(let i2=0;i2<P.length-1;i2++){ const p0=P[Math.max(0,i2-1)],p1=P[i2],p2=P[i2+1],p3=P[Math.min(P.length-1,i2+2)]; d+='C'+(p1.x+(p2.x-p0.x)/6).toFixed(1)+','+(p1.y+(p2.y-p0.y)/6).toFixed(1)+' '+(p2.x-(p3.x-p1.x)/6).toFixed(1)+','+(p2.y-(p3.y-p1.y)/6).toFixed(1)+' '+p2.x.toFixed(1)+','+p2.y.toFixed(1); } return d; }
+  let total=0,lastW=0,lastH=0,startY=0,endY=0;
+  function crPath(P){ const vwc=document.documentElement.clientWidth, cx=v=>Math.max(12,Math.min(vwc-12,v)); let d='M'+cx(P[0].x).toFixed(1)+','+P[0].y.toFixed(1); for(let i2=0;i2<P.length-1;i2++){ const p0=P[Math.max(0,i2-1)],p1=P[i2],p2=P[i2+1],p3=P[Math.min(P.length-1,i2+2)]; d+='C'+cx(p1.x+(p2.x-p0.x)/6).toFixed(1)+','+(p1.y+(p2.y-p0.y)/6).toFixed(1)+' '+cx(p2.x-(p3.x-p1.x)/6).toFixed(1)+','+(p2.y-(p3.y-p1.y)/6).toFixed(1)+' '+cx(p2.x).toFixed(1)+','+p2.y.toFixed(1); } return d; }
   function build(){
     const vw=document.documentElement.clientWidth, docH=document.body.scrollHeight;
     lastW=vw; lastH=docH;
@@ -307,24 +291,25 @@ footer img{height:86px}
     const tT=pageY(tTrab), tS=pageY(tSobre), tC=pageY(tCur), ct=pageY(tCont);
     const wrapEl=document.querySelector('.wrap');
     const cr=wrapEl?wrapEl.getBoundingClientRect().right:vw*0.9;
-    const xRs=Math.min(vw-16,Math.max(vw*0.90,cr+26)), xLs=vw-xRs;
+    const xRs=Math.min(vw-44,Math.max(vw*0.88,cr+22)), xLs=vw-xRs;
     const narrow=vw<760;
-    const eL=narrow?9:0, eR=narrow?vw-9:0, mid=narrow?(eL+eR)/2:0;
     const W=narrow?[
       {x:sX,y:sY},
-      {x:vw*0.20,y:sY+70},
-      {x:eL+7,y:hy+20},
-      {x:eL,y:cy+20},
-      {x:eL+9,y:tT-70},
-      {x:eL+2,y:gy+gh*0.4},
-      {x:eL+10,y:gy+gh+10},
-      {x:eL+1,y:tS+30},
-      {x:eL+9,y:sy1+sob.offsetHeight*0.5},
-      {x:eL+2,y:sb+20},
-      {x:eL+10,y:tC-40},
-      {x:eL+2,y:cc+ch*0.5},
-      {x:eL+12,y:cc+ch+50},
-      {x:eL+26,y:ct-26}
+      {x:vw*0.22,y:sY+60},
+      {x:vw*0.12,y:hy+30},
+      {x:vw*0.30,y:cy+30},
+      {x:vw*0.72,y:tT-60},
+      {x:vw*0.88,y:gy+gh*0.16},
+      {x:vw*0.12,y:gy+gh*0.42},
+      {x:vw*0.88,y:gy+gh*0.68},
+      {x:vw*0.20,y:gy+gh+40},
+      {x:vw*0.30,y:tS-40},
+      {x:vw*0.76,y:sy1+sob.offsetHeight*0.42},
+      {x:vw*0.22,y:sb+40},
+      {x:vw*0.30,y:tC+30},
+      {x:vw*0.78,y:cc+ch*0.55},
+      {x:vw*0.40,y:cc+ch+70},
+      {x:vw*0.30,y:ct-26}
     ]:[
       {x:sX,y:sY},
       {x:vw*0.26,y:sY+80},
@@ -348,20 +333,36 @@ footer img{height:86px}
     ];
     const d=crPath(W);
     pOver.setAttribute('d',d); pUnder.setAttribute('d',d); pMask.setAttribute('d',d);
-    const dash=narrow?'70 60':(OVER+' '+(CYCLE-OVER));
-    CY=narrow?130:CYCLE; OV=narrow?70:OVER;
-    const sc=narrow?0.32:0.42;
+    const dash=narrow?'56 44':(OVER+' '+(CYCLE-OVER));
+    CY=narrow?100:CYCLE; OV=narrow?56:OVER;
+    const sc=narrow?0.24:0.42;
     document.getElementById('sNG').setAttribute('transform','scale('+sc+') translate(-160.6 -399.85)');
     pOver.setAttribute('stroke-dasharray',dash);
-    pUnder.setAttribute('stroke-dasharray',narrow?'40 90':'55 115');
-    pUnder.setAttribute('stroke-dashoffset',narrow?'-72':'-110');
+    pUnder.setAttribute('stroke-dasharray',narrow?'30 70':'55 115');
+    pUnder.setAttribute('stroke-dashoffset',narrow?'-58':'-110');
+    pOver.setAttribute('stroke-width',narrow?2.4:3);
+    pUnder.setAttribute('stroke-width',narrow?2.4:3);
     total=pOver.getTotalLength();
-    estreito=narrow;
-    if(narrow) amostrarY(); else mapaY=null;
+    startY=W[0].y; endY=W[W.length-1].y;
+    samples.length=0;
+    const N=Math.max(60,Math.ceil(total/12));
+    let ymax=-1e9;
+    for(let s=0;s<=N;s++){ const L=total*s/N; const y=pOver.getPointAtLength(L).y; ymax=Math.max(ymax,y); samples.push({L:L,y:ymax}); }
+    endY=Math.max(endY,samples[samples.length-1].y);
     pMask.style.strokeDasharray=total;
     pMask.style.strokeDashoffset=Math.max(0,total-curLen);
   }
-  let raf=0, curLen=0, tLen=0, away=false, knotState=0;
+  const samples=[];
+  function lenAtY(ty){
+    if(!samples.length) return 0;
+    if(ty<=samples[0].y) return 0;
+    if(ty>=samples[samples.length-1].y) return total;
+    let lo=0,hi=samples.length-1;
+    while(hi-lo>1){ const mid=(lo+hi)>>1; (samples[mid].y<ty)?lo=mid:hi=mid; }
+    const a=samples[lo],b=samples[hi],t=(b.y-a.y)>0.001?(ty-a.y)/(b.y-a.y):0;
+    return a.L+(b.L-a.L)*t;
+  }
+  let raf=0, curLen=0, tLen=0, away=false, knotState=0, lastT=0;
   function startKnot(){
     knotState=1;
     const E=pOver.getPointAtLength(total), Ep=pOver.getPointAtLength(Math.max(0,total-6));
@@ -399,16 +400,17 @@ footer img{height:86px}
     const ang=Math.atan2(pt.y-pt2.y,pt.x-pt2.x)*180/Math.PI;
     gN.setAttribute('transform','translate('+pt.x+','+pt.y+') rotate('+(ang+180)+')');
     const m=len%CY;
-    gN.style.opacity = (!away&&len<2)?0:((len>=total-3)?1:((m>OV)?0.35:1));
+    gN.style.opacity = (!away&&len<2)?0:((len>=total-6||tLen>=total-1)?1:((m>OV)?0.5:1));
   }
   function tick(){
     raf=0;
-    /* no mobile o scroll por toque é rápido e o rAF chega picotado durante o
-       momentum: com 0.075 a agulha ficava visivelmente para trás do dedo. */
-    curLen += (tLen-curLen)*(estreito?0.22:0.075);
+    const now=performance.now(), dt=Math.min(120,now-(lastT||now)); lastT=now;
+    const gap=tLen-curLen, vhLen=innerHeight*0.9;
+    if(Math.abs(gap)>vhLen){ curLen=tLen; }
+    else { curLen += gap*(1-Math.pow(1-0.16,dt/16.7)); }
     if(Math.abs(tLen-curLen)>0.5){ raf=requestAnimationFrame(tick); } else { curLen=tLen; }
     if(!away&&curLen<2){ pMask.style.strokeDashoffset=total; gN.style.opacity=0; return; }
-    if(away&&knotState===0&&tLen>=total-1&&Math.abs(tLen-curLen)<=0.6) startKnot();
+    if(away&&knotState===0&&tLen>=total-1&&Math.abs(tLen-curLen)<=1.5) startKnot();
     render(Math.max(0,Math.min(curLen,total)));
   }
   function onScroll(){
@@ -418,13 +420,13 @@ footer img{height:86px}
     away=frac>0.012;
     const ln=document.getElementById('logoNeedle');
     if(ln){ if(away&&!ln.dataset.off){ ln.dataset.off='1'; ln.style.animation='none'; ln.style.transition='opacity .35s'; ln.style.opacity=0; } else if(!away&&ln.dataset.off){ delete ln.dataset.off; ln.style.opacity=1; } }
-    /* mobile: a agulha borda onde o dedo está (40% da altura da tela).
-       desktop: mantém a fração linear, que ali sobra traçado e funciona bem. */
-    tLen = away ? (estreito ? lenNoY(scrollY+vh*0.40) : total*frac) : 0;
+    const tipY=Math.max(startY,Math.min(endY,scrollY+vh*0.60));
+    tLen = away ? ((tipY>=endY-2)?total:Math.min(lenAtY(tipY),total)) : 0;
     if(knotState&&tLen<total-14){ knotState=0; const wg=document.getElementById('wrapG'); wg.style.transition='none'; wg.style.opacity=0; wg.style.transform=''; document.getElementById('knotDot').style.opacity=0; }
-    if(!raf) raf=requestAnimationFrame(tick);
+    if(!raf){ lastT=performance.now(); raf=requestAnimationFrame(tick); }
   }
   build(); onScroll();
+  document.querySelectorAll('img').forEach(im=>im.addEventListener('load',()=>{ build(); onScroll(); }));
   addEventListener('scroll', onScroll, {passive:true});
   addEventListener('resize', ()=>{ build(); onScroll(); });
   addEventListener('load', ()=>{ build(); onScroll(); });
