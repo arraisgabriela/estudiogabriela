@@ -9,8 +9,11 @@ Publicado em <https://estudiogabriela.com.br> via GitHub Pages.
 
 ```
 index.html                    página única (todo o CSS e JS estão inline)
+favicon.ico                   ícone 16/32/48px — fica na raiz de propósito
 assets/
-  flor.svg                    flor da marca (usada na seção "cursos" e no favicon)
+  favicon.svg                 ícone vetorial (a flor da marca, recortada)
+  apple-touch-icon.png        ícone 180px para "adicionar à tela de início" no iOS
+  flor.svg                    flor da marca com as folhas (seção "cursos")
   agulha.svg                  agulha da animação de bordado
   logo-principal.svg          logo colorido (cabeçalho e hero)
   logo-principal_negativa.svg logo para fundo escuro (rodapé)
