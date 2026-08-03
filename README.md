@@ -13,7 +13,8 @@ favicon.ico                   ícone 16/32/48px — fica na raiz de propósito
 assets/
   favicon.svg                 ícone vetorial (a flor da marca, recortada)
   apple-touch-icon.png        ícone 180px para "adicionar à tela de início" no iOS
-  flor.svg                    flor da marca com as folhas (seção "cursos")
+  flor-arco.svg               flor + arco, como no topo do logo (seção "cursos")
+  flor.svg                    só a flor com as folhas, sem o arco
   agulha.svg                  agulha da animação de bordado
   logo-principal.svg          logo colorido (cabeçalho e hero)
   logo-principal_negativa.svg logo para fundo escuro (rodapé)
